@@ -122,14 +122,14 @@ namespace Plugin.BLE.iOS
 
         protected override Task StartUpdatesNativeAsync()
         {
-            _parentDevice.UpdatedCharacterteristicValue -= UpdatedNotify;
-            _parentDevice.UpdatedCharacterteristicValue += UpdatedNotify;
-
             // JTS Added this if-statement. We found that on iOS, when you turn off Bluetooth during a connection it gets the characteristic into a stale state 
             // and the IsNotifying property remains True. Then attempting to reset it does not trigger the callback thus resulting in a deadlock.
              if(_nativeCharacteristic.IsNotifying) {
               return Task.FromResult(true);
              }
+
+            _parentDevice.UpdatedCharacterteristicValue -= UpdatedNotify;
+            _parentDevice.UpdatedCharacterteristicValue += UpdatedNotify;
 
             //https://developer.apple.com/reference/corebluetooth/cbperipheral/1518949-setnotifyvalue
             return TaskBuilder.FromEvent<bool, EventHandler<CBCharacteristicEventArgs>>(
@@ -155,13 +155,14 @@ namespace Plugin.BLE.iOS
 
         protected override Task StopUpdatesNativeAsync()
         {
+            _parentDevice.UpdatedCharacterteristicValue -= UpdatedNotify;
+
             // JTS Added this if-statement. We found that on iOS, when you turn off Bluetooth during a connection it gets the characteristic into a stale state 
             // and the IsNotifying property remains True. Then attempting to reset it does not trigger the callback thus resulting in a deadlock.
              if(_parentDevice.State == CBPeripheralState.Disconnected) {
               return Task.FromResult(true);
              }
 
-            _parentDevice.UpdatedCharacterteristicValue -= UpdatedNotify;
             return TaskBuilder.FromEvent<bool, EventHandler<CBCharacteristicEventArgs>>(
                 execute: () => _parentDevice.SetNotifyValue(false, _nativeCharacteristic),
                 getCompleteHandler: (complete, reject) => (sender, args) =>
